@@ -1,0 +1,32 @@
+# Secretos y configuracion local
+.env
+.env.*
+!.env.example
+**/config_local.h
+**/node_config_local.h
+**/secrets.h
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Entornos y archivos generados
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.log
+**/logs/
+**/build/
+**/sdkconfig
+**/sdkconfig.old
+**/NODOSENSOR1.zip
+.DS_Store
+Thumbs.db
+
+# Respaldos locales
+**/mainbackup.c
+**/appbackup.txt
+
+# Respaldos locales
+**/templatesbackup/

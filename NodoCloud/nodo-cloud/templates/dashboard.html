@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Monitoreo de {{ node_id }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  <!-- Chart.js: si no hay internet, el resto del panel sigue funcionando. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script defer src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</head>
+<body data-node-id="{{ node_id }}" data-offline-seconds="{{ offline_seconds }}">
+<main class="page">
+
+  <header class="topbar">
+    <div class="topbar-title">
+      <h1>{{ node_id }}</h1>
+      <p>Nivel del tanque vía LoRa → NodoCentral → NodoCloud</p>
+    </div>
+    <ul class="status-strip" aria-live="polite">
+      <li class="pill" id="pillCloud" data-state="wait"><span class="dot"></span><span id="txtCloud">Conectando con NodoCloud…</span></li>
+      <li class="pill" id="pillNode" data-state="wait"><span class="dot"></span><span id="txtNode">Esperando datos del sensor</span></li>
+      <li class="pill" id="pillAck" data-state="wait"><span class="dot"></span><span id="txtAck">ACK sin datos</span></li>
+    </ul>
+    <a class="btn-config" href="/config">Configurar alertas</a>
+  </header>
+
+  <div class="banner" id="errorBanner" hidden></div>
+
+  <!-- Lectura principal: corte del tanque + distancia -->
+  <section class="hero" aria-label="Lectura actual">
+    <figure class="tank" aria-hidden="true">
+      <svg viewBox="0 0 220 300" id="tankSvg">
+        <rect x="30" y="20" width="160" height="260" rx="6" class="tank-wall"/>
+        <rect x="32" y="280" width="156" height="0" class="tank-water" id="tankWater"/>
+        <line x1="30" x2="190" y1="0" y2="0" class="tank-limit" id="limitMin"/>
+        <line x1="30" x2="190" y1="0" y2="0" class="tank-limit" id="limitMax"/>
+        <text x="194" y="0" class="tank-limit-label" id="limitMinLabel">mín</text>
+        <text x="194" y="0" class="tank-limit-label" id="limitMaxLabel">máx</text>
+        <rect x="96" y="8" width="28" height="14" rx="3" class="tank-sensor"/>
+        <line x1="110" x2="110" y1="22" y2="22" class="tank-beam" id="tankBeam"/>
+      </svg>
+      <figcaption id="tankCaption">Sin lectura</figcaption>
+    </figure>
+
+    <div class="reading">
+      <p class="reading-label">Distancia del sensor al agua <code>value</code></p>
+      <p class="reading-value"><span id="valValue">—</span><span class="unit">cm</span></p>
+      <p class="reading-state" id="readingState" data-state="none">Sin lectura todavía</p>
+      <dl class="reading-meta">
+        <div><dt>Rango permitido</dt><dd id="valRange">—</dd></div>
+        <div><dt>Hora de la lectura <code>timestamp</code></dt><dd id="valTimestamp">—</dd></div>
+        <div><dt>Recibida en el Cloud</dt><dd><span id="valReceived">—</span> <small id="valAgo"></small></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Todas las variables de la trama, con la misma clave que envía el sensor -->
+  <section class="vars" aria-label="Variables de la trama">
+    <article class="tile tile-wide">
+      <h2>Nivel de agua <code>water_level_cm</code></h2>
+      <p class="tile-value"><span id="valLevel">—</span><span class="unit">cm</span></p>
+      <p class="tile-note" id="noteLevel">Requiere calibración del HX710B</p>
+    </article>
+    <article class="tile tile-wide">
+      <h2>Caudal neto <code>net_flow_l_min</code></h2>
+      <p class="tile-value"><span id="valFlow">—</span><span class="unit">L/min</span></p>
+      <p class="tile-note" id="noteFlow">Positivo: llenando. Negativo: vaciando.</p>
+    </article>
+    <article class="tile">
+      <h2>Presión <code>pressure_kpa</code></h2>
+      <p class="tile-value"><span id="valPressure">—</span><span class="unit">kPa</span></p>
+    </article>
+    <article class="tile">
+      <h2>HX710B crudo <code>hx710b_raw</code></h2>
+      <p class="tile-value"><span id="valHx">—</span><span class="unit">cuentas</span></p>
+      <p class="tile-note" id="noteHx"></p>
+    </article>
+    <article class="tile">
+      <h2>Ultrasónico <code>status</code></h2>
+      <p class="tile-value tile-text" id="valStatus">—</p>
+    </article>
+    <article class="tile">
+      <h2>Estado de alertas</h2>
+      <p class="tile-value tile-text" id="valAlertState">—</p>
+      <p class="tile-note" id="noteAlertState"></p>
+    </article>
+  </section>
+
+  <!-- Históricos -->
+  <section class="charts" aria-label="Históricos">
+    <article class="chart-box chart-main">
+      <header><h2>Distancia y límites</h2><span class="chart-meta" id="chartCount"></span></header>
+      <div class="chart-area"><canvas id="chartDistance"></canvas></div>
+    </article>
+    <article class="chart-box">
+      <header><h2>Nivel y caudal</h2></header>
+      <div class="chart-area"><canvas id="chartLevel"></canvas></div>
+    </article>
+    <p class="chart-fallback" id="chartFallback" hidden>Los gráficos necesitan acceso a internet para cargar Chart.js. Las lecturas siguen actualizándose arriba.</p>
+  </section>
+
+  <!-- Enlace y trazabilidad de la trama -->
+  <section class="trace" aria-label="Trazabilidad">
+    <h2>Recorrido de la última trama</h2>
+    <dl class="trace-grid">
+      <div><dt>message_id</dt><dd id="valMsgId">—</dd></div>
+      <div><dt>Origen de la hora</dt><dd id="valTsSource">—</dd></div>
+      <div><dt>Central (gateway)</dt><dd id="valGateway">—</dd></div>
+      <div><dt>Hora en la Central</dt><dd id="valGatewayTime">—</dd></div>
+      <div><dt>Trama verificada</dt><dd id="valIntegrity">—</dd></div>
+      <div><dt>Reintentos por ACK perdido</dt><dd id="valDuplicates">—</dd></div>
+      <div><dt>Lecturas guardadas</dt><dd id="valTotals">—</dd></div>
+    </dl>
+  </section>
+
+  <section class="history" aria-label="Lecturas recientes">
+    <h2>Lecturas recientes</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Recibida</th><th scope="col">timestamp</th><th scope="col">value (cm)</th>
+            <th scope="col">status</th><th scope="col">hx710b_raw</th><th scope="col">pressure_kpa</th>
+            <th scope="col">water_level_cm</th><th scope="col">net_flow_l_min</th><th scope="col">ACK</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="9" class="empty">Cargando lecturas…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">Se actualiza cada 5 s. <span id="footPoll"></span></footer>
+</main>
+</body>
+</html>

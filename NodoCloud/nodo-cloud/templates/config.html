@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Configuración de urgencias — Smart Drain</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <main class="container-narrow">
+    <article class="config-card">
+      <div class="brand-title" style="margin-bottom: 8px;">
+        <span class="brand-badge">Parámetros Didácticos</span>
+        <h1>Configuración de urgencias</h1>
+      </div>
+      <p class="subtitle">Las lecturas normales dentro del umbral se guardan en la base de datos sin enviar notificaciones de alerta a Discord.</p>
+
+      {% if mensaje %}
+      <div class="alert-banner alert-ok">✅ {{ mensaje }}</div>
+      {% endif %}
+
+      {% if error %}
+      <div class="alert-banner alert-err">⚠️ {{ error }}</div>
+      {% endif %}
+
+      <div id="localFeedback" class="alert-banner alert-ok" style="display:none;"></div>
+
+      <!-- Visualizador Pedagógico Interactivo de Umbrales -->
+      <div class="range-visualizer">
+        <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600;">
+          <span>0 cm (Muy cerca)</span>
+          <span id="previewSafeLabel" style="color:var(--status-ok);">Zona Segura: 15 cm – 120 cm</span>
+          <span>400 cm (Máx. Sensor)</span>
+        </div>
+        <div class="range-bar-track">
+          <div class="range-bar-Safe" id="previewSafeBar" style="left: 5%; width: 30%;"></div>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted);">
+          La barra verde representa la ventana de operación normal del sensor ultrasónico HC-SR04 / JSN-SR04T.
+        </p>
+      </div>
+
+      <!-- Formulario con nombres de campos 100% idénticos al backend Flask -->
+      <form method="post" id="configForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="min">Distancia mínima (cm)</label>
+            <input id="min" name="min_distance_cm" type="number" min="5" max="399" step="0.01" required
+                   value="{{ config.min_distance_cm if config else 15 }}">
+          </div>
+
+          <div class="form-group">
+            <label for="max">Distancia máxima (cm)</label>
+            <input id="max" name="max_distance_cm" type="number" min="6" max="400" step="0.01" required
+                   value="{{ config.max_distance_cm if config else 120 }}">
+          </div>
+        </div>
+
+        <label class="check-box-card">
+          <input type="checkbox" id="chkSensorError" name="alert_sensor_error" {% if not config or config.alert_sensor_error %}checked{% endif %}>
+          <div>
+            <div style="font-weight:600; font-size:0.92rem;">Alertar por error del sensor</div>
+            <div style="font-size:0.82rem; color:var(--text-secondary);">Envía un aviso inmediato si el nodo reporta fallo de lectura o desconexión física.</div>
+          </div>
+        </label>
+
+        <label class="check-box-card">
+          <input type="checkbox" id="chkRecovery" name="alert_recovery" {% if not config or config.alert_recovery %}checked{% endif %}>
+          <div>
+            <div style="font-weight:600; font-size:0.92rem;">Avisar cuando vuelva al estado normal</div>
+            <div style="font-size:0.82rem; color:var(--text-secondary);">Notifica a la clase o monitor cuando la medición regrese dentro del rango permitido.</div>
+          </div>
+        </label>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:24px;">
+          <a href="/" id="linkBackDashboard" class="btn btn-outline">← Volver al dashboard</a>
+          <button type="submit" class="btn">💾 Guardar configuración</button>
+        </div>
+      </form>
+    </article>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="/static/config.js"></script>
+</body>
+</html>

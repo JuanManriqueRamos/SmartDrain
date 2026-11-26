@@ -1,0 +1,18 @@
+menu "Nodo Sensor"
+
+    menu "Wi-Fi y servidor"
+        config NODO_WIFI_SSID
+            string "SSID de Wi-Fi"
+            default "CONFIGURAR_WIFI_SSID"
+
+        config NODO_WIFI_PASSWORD
+            string "Contrasena de Wi-Fi"
+            default "CONFIGURAR_WIFI_PASSWORD"
+
+        config NODO_API_URL
+            string "URL del endpoint de recepcion"
+            default "http://192.0.2.1:5000/api/event"
+
+    endmenu
+
+endmenu

@@ -1,0 +1,26 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "sx1262.c"
+        "wifi_app.c"
+        "packet_parser.c"
+        "ds3231.c"
+        "sd_storage.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        driver
+        esp_event
+        esp_http_client
+        esp_netif
+        esp_rom
+        esp_timer
+        esp_wifi
+        freertos
+        log
+        nvs_flash
+        esp_driver_gpio
+        esp_driver_spi
+        esp_driver_i2c
+        fatfs
+        sdmmc
+)
